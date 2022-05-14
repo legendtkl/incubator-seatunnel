@@ -17,6 +17,7 @@
 
 package org.apache.seatunnel.flink.batch;
 
+import org.apache.flink.table.api.TableEnvironment;
 import org.apache.seatunnel.apis.base.env.Execution;
 import org.apache.seatunnel.flink.FlinkEnvironment;
 import org.apache.seatunnel.flink.util.TableUtil;
@@ -100,8 +101,8 @@ public class FlinkBatchExecution implements Execution<FlinkBatchSource, FlinkBat
 
     private Optional<DataSet<Row>> fromSourceTable(Config pluginConfig) {
         if (pluginConfig.hasPath(SOURCE_TABLE_NAME)) {
-            BatchTableEnvironment tableEnvironment = flinkEnvironment.getBatchTableEnvironment();
-            Table table = tableEnvironment.scan(pluginConfig.getString(SOURCE_TABLE_NAME));
+            TableEnvironment tableEnvironment = flinkEnvironment.getBatchTableEnvironment();
+            Table table = tableEnvironment.from(pluginConfig.getString(SOURCE_TABLE_NAME));
             return Optional.ofNullable(TableUtil.tableToDataSet(tableEnvironment, table));
         }
         return Optional.empty();

@@ -24,9 +24,12 @@ import org.apache.seatunnel.shade.com.typesafe.config.Config;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.RestartStrategyOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 public final class EnvironmentUtil {
@@ -85,5 +88,38 @@ public final class EnvironmentUtil {
             }
         }
         return CheckResult.success();
+    }
+
+    public static void setRestartStrategy(Config config, Configuration flinkConfiguration) {
+        try {
+            if (config.hasPath(ConfigKeyName.RESTART_STRATEGY)) {
+                String restartStrategy = config.getString(ConfigKeyName.RESTART_STRATEGY);
+                switch (restartStrategy.toLowerCase()) {
+                    case "no":
+                        flinkConfiguration.set(RestartStrategyOptions.RESTART_STRATEGY, "none");
+                        break;
+                    case "fixed-delay":
+                        int attempts = config.getInt(ConfigKeyName.RESTART_ATTEMPTS);
+                        long delay = config.getLong(ConfigKeyName.RESTART_DELAY_BETWEEN_ATTEMPTS);
+
+                        flinkConfiguration.set(RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_ATTEMPTS, attempts);
+                        flinkConfiguration.set(RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_DELAY, Duration.ofMillis(delay));
+                        break;
+                    case "failure-rate":
+                        long failureInterval = config.getLong(ConfigKeyName.RESTART_FAILURE_INTERVAL);
+                        int rate = config.getInt(ConfigKeyName.RESTART_FAILURE_RATE);
+                        long delayInterval = config.getLong(ConfigKeyName.RESTART_DELAY_INTERVAL);
+
+                        flinkConfiguration.set(RestartStrategyOptions.RESTART_STRATEGY_FAILURE_RATE_DELAY, Duration.ofMillis(delayInterval));
+                        flinkConfiguration.set(RestartStrategyOptions.RESTART_STRATEGY_FAILURE_RATE_FAILURE_RATE_INTERVAL, Duration.ofMillis(failureInterval));
+                        flinkConfiguration.set(RestartStrategyOptions.RESTART_STRATEGY_FAILURE_RATE_MAX_FAILURES_PER_INTERVAL, rate);
+                        break;
+                    default:
+                        LOGGER.warn("set restart.strategy failed, unknown restart.strategy [{}],only support no,fixed-delay,failure-rate", restartStrategy);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("set restart.strategy in config '{}' exception", config, e);
+        }
     }
 }
